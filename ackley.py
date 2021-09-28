@@ -177,9 +177,9 @@ class ACKLEY:
         # plt.legend()
         # plt.show()
 
-    def do_one_trial(self, g_max = 50):
+    def do_one_trial(self, g_max = 100):
         Ev = Evolutionary_Strategies()
-        generation_list = Ev.es(m=100, l=600, g_max=g_max, eval_f= self.eval_func, seed=1, initial_sigma=0.0001, 
+        generation_list = Ev.es(m=100, l=800, g_max=g_max, eval_f= self.eval_func, seed=5, initial_sigma=0.001, 
         recombination_f=None, strategy="k+l", n=2)
 
         generation_eval_list = [[self.eval_func(individual) for individual in generation] for generation in generation_list]

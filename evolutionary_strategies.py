@@ -13,6 +13,7 @@ class Evolutionary_Strategies:
         self.sigma = init_sigma
         self.l = l
         self.m = m
+        self.best_so_far = 999999999999999
 
 
         # Initialize a queue to keep last 10*n mutations
@@ -27,10 +28,8 @@ class Evolutionary_Strategies:
         # print(init_generation)
         return init_generation
 
-    def calculate1fifth(self, parent):
-        # calculate the parent score
-        parent_score = self.eval_func(parent)
-
+    def calculate1fifth(self):
+       
         # get the elements of the queue to a list
         children = list(self.q.queue)
 
@@ -42,7 +41,7 @@ class Evolutionary_Strategies:
         children_scores_np = np.asarray(children_scores)
 
         # get the number of successful children
-        num_successful_children = (children_scores_np > parent_score).sum()
+        num_successful_children = (children_scores_np > self.best_so_far).sum()
         # print("Successful children number: ", num_successful_children)
         # print("Length of children ",len(children))
 
@@ -76,17 +75,11 @@ class Evolutionary_Strategies:
 
             # print("l/m: ", l//m)
             for _ in range(self.l//self.m):
-                if(mutations_so_far == self.n and self.q.qsize()==10*self.n ):
-                    mutations_so_far=0
-                    success = self.calculate1fifth(parent)
-                    if success > 0.2:
-                        self.sigma = self.sigma/0.85
-                    elif success < 0.2:
-                        self.sigma = 0.85*self.sigma
-
+                
                 child = parent.copy()
                 modifier = np.random.normal(loc=0.0, scale=self.sigma)
                 print("sigma: ", self.sigma)
+                # print(self.best_so_far)
                 # print("Modifier: ", modifier)
 
                 
@@ -102,6 +95,7 @@ class Evolutionary_Strategies:
                 #     child = np.ndarray.tolist(np.random.uniform(-32,32,2))
                 # print("Child x {:}, child y {:}".format(child[0],child[1]))
             
+                
 
                 children.append(child)
                 # print("children so far: ", children)
@@ -115,6 +109,14 @@ class Evolutionary_Strategies:
 
                 mutations_so_far += 1
 
+                if(mutations_so_far%self.n == 0 and self.q.qsize()==10*self.n ):
+                    success = self.calculate1fifth()
+                    if success > 0.2:
+                        self.sigma = self.sigma/0.85
+                    elif success < 0.2:
+                        self.sigma = 0.85*self.sigma
+                    mutations_so_far=0
+
             return children
 
     def select_m_best(self, pop):
@@ -122,9 +124,12 @@ class Evolutionary_Strategies:
         Sorts the list based on the evaluation function and returns the first m elements.
         """
         m_best = sorted(pop, key=lambda child: self.eval_func(child))[:self.m]
+        child_score = self.eval_func(m_best[0])
+        if child_score < self.best_so_far:
+            self.best_so_far = child_score
         return m_best
 
-    def es(self, m=5, l=30, g_max=5, eval_f= None, seed=0, initial_sigma=0.05, recombination_f=None, strategy="k+l", n=5):
+    def es(self, m=5, l=30, g_max=5, eval_f= None, seed=0, initial_sigma=0.05, recombination_f=None, strategy="k+l", n=2):
 
             """Evolutionary Strategies
 
@@ -165,6 +170,7 @@ class Evolutionary_Strategies:
             pop = initial_population
             print("\nInitial population ", pop)
             while (g<=g_max):
+                
                 
                 parents = random.sample(pop, self.m)
                 # print ("\nSampled parents: ", parents)
