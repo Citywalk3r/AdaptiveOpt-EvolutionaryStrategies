@@ -1,23 +1,16 @@
 import numpy as np
-from evolutionary_strategies import es
+from evolutionary_strategies import Evolutionary_Strategies
 import matplotlib.pyplot as plt
 import math
 import random
 import csv
+from queue import Queue
 
 class ACKLEY:
 
     def __init__(self, is_debug):
         self.is_debug = is_debug
     
-    def generate_init_pop(self, p_size, seed):
-        """
-        Generates the initial population given population size.
-        """
-        np.random.seed(seed=seed)
-        init_generation = [np.ndarray.tolist(np.random.uniform(-32,32,2)) for _ in range(p_size)]
-        # print(init_generation)
-        return init_generation
     
     def tournament_selection(self, population,  eval_f):
         """
@@ -68,33 +61,8 @@ class ACKLEY:
         
         return child1, child2
 
-    def mutate_degrading(self, child, p_mut, g_max, curr_g):
-        """Implements the mutation operator.
-           Picks 2 random elements from the array and swaps them.
-        """
-        
-        p_mut_modifier = g_max/curr_g
-        lower, upper = 0, p_mut
-        p_mut_mod = lower + (upper - lower) * p_mut_modifier
 
-        # print("p_mut: ",p_mut_mod)
-
-        p = np.random.uniform(0,1)
-
-        if p <= p_mut_mod:
-            dim = np.random.randint(2)
-            M = np.random.randint(1,11)
-            deltaX = (32 - (-32))/M
-            k = 1 - 1/p_mut_modifier
-            # print("k: ",k)
-            k_sign = np.random.randint(2)
-            if k_sign == 0:
-                if child[dim] + k*deltaX <=32:
-                    child[dim] += k*deltaX
-            else:
-                if child[dim] - k*deltaX >=-32:
-                    child[dim] -= k*deltaX
-        return child
+    
 
 
 
@@ -103,6 +71,7 @@ class ACKLEY:
         Evaluates the current state by
         calculating the function result.
         """
+        # print(individual)
 
         x = individual[0]
         y = individual[1]
@@ -207,9 +176,31 @@ class ACKLEY:
         # plt.hlines(y=best, xmin=0, xmax=g_max, linewidth=2, color='r', label="best: "+str(best))
         # plt.legend()
         # plt.show()
-    
 
+    def do_one_trial(self, g_max = 50):
+        Ev = Evolutionary_Strategies()
+        generation_list = Ev.es(m=100, l=600, g_max=g_max, eval_f= self.eval_func, seed=1, initial_sigma=0.0001, 
+        recombination_f=None, strategy="k+l", n=2)
+
+        generation_eval_list = [[self.eval_func(individual) for individual in generation] for generation in generation_list]
+        gen_eval_list_np = np.array(generation_eval_list)
+        # print(generation_eval_list)
+
+        # list of mins of each generation
+        gen_mins = np.min(gen_eval_list_np, 1)
+
+        # best solution
+        best = np.min(gen_mins)
+        print("Best solution: ", best)
+
+        plt.title('g_max={:}'.format(g_max))
+        plt.axes(xlabel="generations", ylabel="best individual score")
+        plt.plot(range(g_max), gen_mins)
+        plt.hlines(y=best, xmin=0, xmax=g_max, linewidth=2, color='r', label="best: "+str(best))
+        plt.legend()
+        plt.show()
 
 if __name__ == "__main__":
     ACKLEY = ACKLEY(is_debug=False)
-    ACKLEY.solve_ackley()
+    # ACKLEY.solve_ackley()
+    ACKLEY.do_one_trial()
