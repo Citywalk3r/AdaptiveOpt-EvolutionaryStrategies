@@ -1,10 +1,12 @@
 import numpy as np
 from evolutionary_strategies import Evolutionary_Strategies
+from evolutionary_strategies_recomb import Evolutionary_Strategies as EV_Recomb
 import matplotlib.pyplot as plt
 import math
 import random
 import csv
 from queue import Queue
+import pandas as pd
 
 class ACKLEY:
 
@@ -177,28 +179,60 @@ class ACKLEY:
         # plt.legend()
         # plt.show()
 
-    def do_one_trial(self, g_max = 100):
+    def do_one_trial(self, g_max = 15):
+
         Ev = Evolutionary_Strategies()
-        generation_list = Ev.es(m=100, l=600, g_max=g_max, eval_f= self.eval_func, seed=233, initial_sigma=0.001, 
-        recombination_f=None, strategy="k+l", n=2)
+        Ev_recomb = EV_Recomb()
+        data = []
 
-        generation_eval_list = [[self.eval_func(individual) for individual in generation] for generation in generation_list]
-        gen_eval_list_np = np.array(generation_eval_list)
-        # print(generation_eval_list)
+        headers = ['σ', 1821, 97, 1940, 1924, 1250, 776, 600, 430, 445, 336]
+        seeds = [1821, 1453, 1940, 1924, 1250, 776, 600, 430, 445, 336]
+        l_to_m_ratios = [(1000, 6000), (1400,9800), (2000,16000)]
+        init_std_devs = [0.001, 0.01, 0.1, 1, 10]
+        solutions_for_every_seed = []
+        # for index, tuple in enumerate(l_to_m_ratios):
+        for dev in init_std_devs:
+            for seed in seeds:
+                generation_list, sigma_list = Ev_recomb.es(m=2000, l=16000, g_max=g_max, eval_f= self.eval_func, seed=seed, initial_sigma=dev, 
+                recombination_f=None, strategy="k+l", n=5)
 
-        # list of mins of each generation
-        gen_mins = np.min(gen_eval_list_np, 1)
+                generation_eval_list = [[self.eval_func(individual) for individual in generation] for generation in generation_list]
+                gen_eval_list_np = np.array(generation_eval_list)
+                # print(generation_eval_list)
 
-        # best solution
-        best = np.min(gen_mins)
-        print("Best solution: ", best)
+                # list of mins of each generation
+                gen_mins = np.min(gen_eval_list_np, 1)
 
-        plt.title('g_max={:}'.format(g_max))
-        plt.axes(xlabel="generations", ylabel="best individual score")
-        plt.plot(range(g_max), gen_mins)
-        plt.hlines(y=best, xmin=0, xmax=g_max, linewidth=2, color='r', label="best: "+str(best))
-        plt.legend()
-        plt.show()
+                # best solution
+                best = np.min(gen_mins)
+                solutions_for_every_seed.append(best)
+                print("Best solution: ", best)
+
+            tmp = [dev]
+            tmp.extend(solutions_for_every_seed)
+            data.append(tmp)
+            solutions_for_every_seed = []
+
+        print(data)
+        df= pd.DataFrame(data=data,
+                    columns= list(map(str, headers)))
+        print(df)
+        df.to_excel("../recombination_10_seeds.xlsx")
+
+        # plt.title('g_max={:}'.format(g_max))
+        # plt.axes(xlabel="generations", ylabel="best individual score")
+        # plt.plot(range(g_max), gen_mins)
+        # plt.hlines(y=best, xmin=0, xmax=g_max, linewidth=2, color='r', label="best: "+str(best))
+        # plt.legend()
+        # plt.show()
+
+        # # print(sigma_list)
+        # plt.title('sigma')
+        # plt.axes(xlabel="number of adjustments", ylabel="sigma value")
+        # plt.plot(sigma_list)
+        # plt.yscale('log')
+        # plt.show()
+        
 
 if __name__ == "__main__":
     ACKLEY = ACKLEY(is_debug=False)
