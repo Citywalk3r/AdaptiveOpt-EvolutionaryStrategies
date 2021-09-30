@@ -1,6 +1,7 @@
 import numpy as np
 from evolutionary_strategies import Evolutionary_Strategies
-from evolutionary_strategies_recomb import Evolutionary_Strategies as EV_Recomb
+from evolutionary_strategies_recomb import Evolutionary_Strategies as EV_Recomb_sigma
+from evolutionary_strategies_recomb_decision_vars import Evolutionary_Strategies as EV_Recomb_vars
 import matplotlib.pyplot as plt
 import math
 import random
@@ -182,13 +183,13 @@ class ACKLEY:
     def do_one_trial(self, g_max = 15):
 
         Ev = Evolutionary_Strategies()
-        Ev_recomb = EV_Recomb()
+        Ev_recomb = EV_Recomb_vars()
         data = []
 
         headers = ['σ', 1821, 97, 1940, 1924, 1250, 776, 600, 430, 445, 336]
         seeds = [1821, 1453, 1940, 1924, 1250, 776, 600, 430, 445, 336]
         l_to_m_ratios = [(1000, 6000), (1400,9800), (2000,16000)]
-        init_std_devs = [0.001, 0.01, 0.1, 1, 10]
+        init_std_devs = [0.1]
         solutions_for_every_seed = []
         # for index, tuple in enumerate(l_to_m_ratios):
         for dev in init_std_devs:
@@ -217,7 +218,7 @@ class ACKLEY:
         df= pd.DataFrame(data=data,
                     columns= list(map(str, headers)))
         print(df)
-        df.to_excel("../recombination_10_seeds.xlsx")
+        df.to_excel("../dec_var_recombination_10_seeds.xlsx")
 
         # plt.title('g_max={:}'.format(g_max))
         # plt.axes(xlabel="generations", ylabel="best individual score")

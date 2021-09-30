@@ -13,7 +13,6 @@ class Evolutionary_Strategies:
         self.sigma = init_sigma
         self.l = l
         self.m = m
-        self.best_so_far = 999999999999999
         self.mutations_performed = 0
         self.sigma_list = []
 
@@ -58,30 +57,33 @@ class Evolutionary_Strategies:
             for _ in range(self.l//self.m):
 
                 parents_for_recomb = random.sample(pop, 4)
-                avg_parent_sigma_x = (parents_for_recomb[0][2] + parents_for_recomb[1][2])/2
-                avg_parent_sigma_y = (parents_for_recomb[2][3] + parents_for_recomb[3][3])/2
-                
-               
-                child = parent.copy()
-                # print(self.q.qsize())
 
+                parent_1_sigma_x = parents_for_recomb[0][2]
+                parent_2_sigma_x = parents_for_recomb[1][2]
+                parent_3_sigma_y = parents_for_recomb[2][3]
+                parent_4_sigma_y = parents_for_recomb[3][3]
+
+                child = parent.copy()
+       
                 if(self.mutations_performed%self.n == 0 and self.q.full()):
                     success = self.calculate1fifth()
                     if success > 0.2:
-                        child[2] = avg_parent_sigma_x/0.85
-                        child[3] = avg_parent_sigma_y/0.85
+                        parent_1_sigma_x = parent_1_sigma_x/0.85
+                        parent_2_sigma_x = parent_2_sigma_x/0.85
+                        parent_3_sigma_y = parent_3_sigma_y/0.85
+                        parent_4_sigma_y = parent_4_sigma_y/0.85
                     elif success < 0.2:
-                        child[2] = 0.85*avg_parent_sigma_x
-                        child[3] = 0.85*avg_parent_sigma_y
-                    # print("New sigma: ", self.sigma) # Does the new sigma need to be withing bounds?
-                    # self.sigma_x_list.append(child[2])
+                        parent_1_sigma_x = parent_1_sigma_x*0.85
+                        parent_2_sigma_x = parent_2_sigma_x*0.85
+                        parent_3_sigma_y = parent_3_sigma_y*0.85
+                        parent_4_sigma_y = parent_4_sigma_y*0.85
+
+                child[2] = (parent_1_sigma_x + parent_2_sigma_x)/2
+                child[3] = (parent_3_sigma_y + parent_4_sigma_y)/2
 
                 modifier_x = np.random.normal(loc=0.0, scale=child[2])
                 modifier_y = np.random.normal(loc=0.0, scale=child[3])
-                # print(self.best_so_far)
-                # print("Modifier: ", modifier)
 
-            
                 if child[0] + modifier_x <=32 and child[0] + modifier_x >=-32: # Check if out of boundaries
                     child[0] += modifier_x
                     
@@ -143,34 +145,20 @@ class Evolutionary_Strategies:
             generation_list = []
             g = 0
             initial_population = self.generate_init_pop(seed, initial_sigma)
-            # generation_list.append(initial_population)
 
             # endregion
             pop = initial_population
-            # print("\nInitial population ", pop)
             while (g<g_max):
                 
                 
                 parents = random.sample(pop, self.m)
-                # print ("\nSampled parents: ", parents)
                 if(strategy == "k,l"):
                     pop = []
                 for parent in parents:
 
                     children = self.mutation_sigma_recombination(parent, pop)
-                    # print("Children from 1 parent: ", children)
-                    # print("l/m: ", l//m)
-                    # print("Length of children: ", len(children))
                     pop.extend(children)
-                    # print("Total population with children: ", pop)
-                    # print("Length of total population: ", len(pop))
-                    # print("Total population with children: ", pop)
-                    # print("Length of total population: ", len(pop))
                 pop = self.select_m_best(pop)
-                # print(pop)
-                # if self.eval_func(pop[0])< self.best_so_far:
-                #     self.best_so_far = self.eval_func(pop[0])
-                # print("Population length after selection of best: ", len(pop))
                 generation_list.append(list(pop))
                 g+=1
             return generation_list, self.sigma_list
