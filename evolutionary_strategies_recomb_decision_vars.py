@@ -1,32 +1,18 @@
-import itertools
 import random
-import math
 import numpy as np
 from queue import Queue
 
 class Evolutionary_Strategies:
 
-    def __init__(self, n=2, eval_func=None, init_sigma=0.05, l=6, m=1):
-        
-        self.n = n
-        self.eval_func = eval_func
-        self.sigma = init_sigma
-        self.l = l
-        self.m = m
-        self.mutations_performed = 0
-        self.sigma_list = []
+    def __init__(self):
+        pass
 
-
-        # Initialize a queue to keep last 10*n mutations
-        self.q = Queue(maxsize = 10*n)
-    
     def generate_init_pop(self, seed, initial_sigma):
         """
         Generates the initial population given population size m.
         """
         rng = np.random.default_rng(seed)
         init_generation = [[*np.ndarray.tolist(rng.uniform(-32,32,2)), *[initial_sigma, initial_sigma]] for _ in range(self.m)]
-        # print(init_generation)
         return init_generation
 
     def calculate1fifth(self):
@@ -36,15 +22,26 @@ class Evolutionary_Strategies:
         truth_table = np.asarray(list(self.q.queue))
         successful_children = np.count_nonzero(truth_table)
         success_rate = successful_children/truth_table.size
-        # print("Success rate: ", success_rate)
-        # print("Total number of children that are better than parent in the last {:} mutations: {}".format(10*self.n, successful_children))
-
         return success_rate
+    
+    def decision_var_dual_discrete_recombination(self, children):
+        children = children.copy()
+        children_as_parents = children.copy()
+        for child in children:
+            recomb_parents = random.sample(children_as_parents, 2)
+            if np.random.uniform() <= 0.5:
+                child[0] = recomb_parents[0][0]
+            else:
+                child[0] = recomb_parents[1][0]
+            if np.random.uniform() <= 0.5:
+                child[1] = recomb_parents[0][1]
+            else:
+                child[1] = recomb_parents[1][1]
+        
+        return children
 
     def mutation_sigma_recombination(self, parent, pop):
             """Implements the mutation operator.
-            Normally distributed pertrubation, 𝑁(0,𝜎) with the same 𝜎 for each encoded variable
-            
             Parameters:
                 parent : 2D array [x,y]
             Returns:
@@ -56,27 +53,34 @@ class Evolutionary_Strategies:
 
             for _ in range(self.l//self.m):
 
+                # Randomly select 4 parents from the population
                 parents_for_recomb = random.sample(pop, 4)
 
+                # Get the sigma_x from 2 parents
                 parent_1_sigma_x = parents_for_recomb[0][2]
                 parent_2_sigma_x = parents_for_recomb[1][2]
+
+                # Get the sigma_y from 2 parents
                 parent_3_sigma_y = parents_for_recomb[2][3]
                 parent_4_sigma_y = parents_for_recomb[3][3]
+
+                
 
                 child = parent.copy()
        
                 if(self.mutations_performed%self.n == 0 and self.q.full()):
                     success = self.calculate1fifth()
                     if success > 0.2:
-                        parent_1_sigma_x = parent_1_sigma_x/0.85
-                        parent_2_sigma_x = parent_2_sigma_x/0.85
-                        parent_3_sigma_y = parent_3_sigma_y/0.85
-                        parent_4_sigma_y = parent_4_sigma_y/0.85
+                        self.std_dev_multiplier = self.std_dev_multiplier/0.85
                     elif success < 0.2:
-                        parent_1_sigma_x = parent_1_sigma_x*0.85
-                        parent_2_sigma_x = parent_2_sigma_x*0.85
-                        parent_3_sigma_y = parent_3_sigma_y*0.85
-                        parent_4_sigma_y = parent_4_sigma_y*0.85
+                        self.std_dev_multiplier = self.std_dev_multiplier*0.85
+                    self.std_dev_multiplier_list.append(self.std_dev_multiplier)
+
+                parent_1_sigma_x = parent_1_sigma_x*self.std_dev_multiplier
+                parent_2_sigma_x = parent_2_sigma_x*self.std_dev_multiplier
+                parent_3_sigma_y = parent_3_sigma_y*self.std_dev_multiplier
+                parent_4_sigma_y = parent_4_sigma_y*self.std_dev_multiplier
+ 
 
                 child[2] = (parent_1_sigma_x + parent_2_sigma_x)/2
                 child[3] = (parent_3_sigma_y + parent_4_sigma_y)/2
@@ -92,9 +96,10 @@ class Evolutionary_Strategies:
                     child[1] += modifier_y
                 
                 if self.q.full():
-                    # Removing element from queue
+                    # Remove element from the queue
                     self.q.get()
 
+                # Insert the last mutation to the queue
                 self.q.put(self.eval_func(child) < parent_score)
 
                 children.append(child.copy())
@@ -102,24 +107,6 @@ class Evolutionary_Strategies:
                 self.mutations_performed+=1
     
             return children
-    
-    def decision_var_dual_discrete_recombination(self, children, parents):
-        children = children.copy()
-        for child in children:
-            # recomb_parents = random.sample(parents, 2)
-            # if np.random.uniform() <= 0.5:
-            #     child[0] = recomb_parents[0][0]
-            # else:
-            #     child[0] = recomb_parents[1][0]
-            # if np.random.uniform() <= 0.5:
-            #     child[1] = recomb_parents[0][1]
-            # else:
-            #     child[1] = recomb_parents[1][1]
-            parent = np.random.randint(0,len(parents),2)
-            child[0] = parents[parent[0]][0]
-            child[1] = parents[parent[1]][1]
-        
-        return children
 
     def select_m_best(self, pop):
         """
@@ -155,26 +142,35 @@ class Evolutionary_Strategies:
             # region initialization
             self.n = n
             self.eval_func = eval_f
+            self.sigma = initial_sigma
+            self.mutations_performed = 0
+            self.std_dev_multiplier_list=[]
             self.l = l
             self.m = m
+            self.std_dev_multiplier = 1
+
+            # Initialize a queue to keep last 10*n mutations
+            self.q = Queue(maxsize = 10*n)
 
             # final populations for each generation (used for visualization)
             generation_list = []
             g = 0
             initial_population = self.generate_init_pop(seed, initial_sigma)
-            # generation_list.append(initial_population)
 
             # endregion
             pop = initial_population
+
             while (g<g_max):
-                parents = random.sample(pop, self.m)
+    
                 if(strategy == "k,l"):
                     pop = []
-                for parent in parents:
+                for _ in range (m):
+                    parent = random.choice(pop)
+                    # for parent in pop:
                     children = self.mutation_sigma_recombination(parent, pop)
-                    children = self.decision_var_dual_discrete_recombination(children, parents)
+                    children = self.decision_var_dual_discrete_recombination(children)
                     pop.extend(children)
                 pop = self.select_m_best(pop)
                 generation_list.append(list(pop))
                 g+=1
-            return generation_list, self.sigma_list
+            return generation_list, self.std_dev_multiplier_list

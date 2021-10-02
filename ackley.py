@@ -14,61 +14,6 @@ class ACKLEY:
     def __init__(self, is_debug):
         self.is_debug = is_debug
     
-    
-    def tournament_selection(self, population,  eval_f):
-        """
-        To find the first parent, selects 3 parents from the population and returns the best.
-        To find the second parent, selects k parents from the population and returns the best.
-        """
-        k=40
-        parent1 = random.sample(population, 2)
-        parent1 = sorted(parent1, key=lambda parent: eval_f(parent))
-
-        parent2 = random.sample(population, k)
-        parent2 = sorted(parent2, key=lambda parent: eval_f(parent))
-        return parent1[0], parent2[0]
-    
-
-    def single_point_crossover(self, p1, p2):
-        """
-        Implements the crossover function.
-        Single point crossover with repair for infeasible solutions.
-        """
-
-        modifier = np.random.normal(loc=0.0, scale=0.001)
-
-        dim = np.random.randint(2)
-
-        M = np.random.randint(1,1001)
-
-        delta1 = p1[dim]/M
-        delta2 = p2[dim]/M
-
-        child1 = p1.copy()
-        child2 = p2.copy()
-
-        if (p1[dim] + delta2 - delta1 <= 32 and p1[dim] + delta2 - delta1 >= -32 ):
-            child1[dim] = p1[dim] + delta2 - delta1
-
-        if (p2[dim] - delta2 + delta1 <= 32 and p2[dim] - delta2 + delta1 >= -32 ):
-            child2[dim] = p2[dim] - delta2 + delta1
-
-        if self.is_debug:
-            print("Parent 1: ", p1)
-            print("Parent 2: ", p2)
-
-            print("modifier: ", modifier)
-
-            print("Child 1 : ", child1)
-            print("Child 2 : ", child2)
-        
-        return child1, child2
-
-
-    
-
-
-
     def eval_func(self, individual):
         """
         Evaluates the current state by
@@ -180,62 +125,163 @@ class ACKLEY:
         # plt.legend()
         # plt.show()
 
-    def do_one_trial(self, g_max = 15):
+    def solve_ackley(self):
 
-        Ev = Evolutionary_Strategies()
-        Ev_recomb = EV_Recomb_vars()
+        
+        
         data = []
 
-        headers = ['σ', 1821, 97, 1940, 1924, 1250, 776, 600, 430, 445, 336]
-        seeds = [1821, 1453, 1940, 1924, 1250, 776, 600, 430, 445, 336]
-        l_to_m_ratios = [(1000, 6000), (1400,9800), (2000,16000)]
-        init_std_devs = [0.1]
-        solutions_for_every_seed = []
-        # for index, tuple in enumerate(l_to_m_ratios):
-        for dev in init_std_devs:
-            for seed in seeds:
-                generation_list, sigma_list = Ev_recomb.es(m=2000, l=16000, g_max=g_max, eval_f= self.eval_func, seed=seed, initial_sigma=dev, 
-                recombination_f=None, strategy="k+l", n=5)
+        # sensitivity_analysis, sigma_recomb, dec_var_recomb, one_trial
+        mode = "one_trial"
 
-                generation_eval_list = [[self.eval_func(individual) for individual in generation] for generation in generation_list]
-                gen_eval_list_np = np.array(generation_eval_list)
-                # print(generation_eval_list)
-
-                # list of mins of each generation
-                gen_mins = np.min(gen_eval_list_np, 1)
-
-                # best solution
-                best = np.min(gen_mins)
-                solutions_for_every_seed.append(best)
-                print("Best solution: ", best)
-
-            tmp = [dev]
-            tmp.extend(solutions_for_every_seed)
-            data.append(tmp)
+        if mode=="sensitivity_analysis":
+            Ev = Evolutionary_Strategies()
+            headers = ['n', 'σ', 'λ/μ', 1821, 97, 1940, 1924, 1250, 776, 600, 430, 445, 336]
+            seeds = [1821, 1453, 1940, 1924, 1250, 776, 600, 430, 445, 336]
+            ns = [1, 2, 5, 10, 15]
+            gmax = 200
+            # seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+            l_to_m_ratios = [(50, 50), (50,100), (50,200), (50,300), (50,600), (50,1000)]
+            init_std_devs = [0.01, 0.1, 1, 10, 100]
+            # init_std_devs = [0.1]
             solutions_for_every_seed = []
+            for n in ns:
+                for index, tuple in enumerate(l_to_m_ratios):
+                    for dev in init_std_devs:
+                        for seed in seeds:
+                            generation_list, sigma_list = Ev.es(m=tuple[0], l=tuple[1], g_max=gmax, eval_f= self.eval_func, seed=seed, initial_sigma=dev, 
+                            recombination_f=None, strategy="k+l", n=n)
 
-        print(data)
-        df= pd.DataFrame(data=data,
-                    columns= list(map(str, headers)))
-        print(df)
-        df.to_excel("../dec_var_recombination_10_seeds.xlsx")
+                            generation_eval_list = [[self.eval_func(individual) for individual in generation] for generation in generation_list]
+                            gen_eval_list_np = np.array(generation_eval_list)
+                            # print(generation_eval_list)
 
-        # plt.title('g_max={:}'.format(g_max))
-        # plt.axes(xlabel="generations", ylabel="best individual score")
-        # plt.plot(range(g_max), gen_mins)
-        # plt.hlines(y=best, xmin=0, xmax=g_max, linewidth=2, color='r', label="best: "+str(best))
-        # plt.legend()
-        # plt.show()
+                            # list of mins of each generation
+                            gen_mins = np.min(gen_eval_list_np, 1)
 
-        # # print(sigma_list)
-        # plt.title('sigma')
-        # plt.axes(xlabel="number of adjustments", ylabel="sigma value")
-        # plt.plot(sigma_list)
-        # plt.yscale('log')
-        # plt.show()
+                            # best solution
+                            best = np.min(gen_mins)
+                            solutions_for_every_seed.append(best)
+                            print("Best solution: ", best)
+
+                        tmp = [n, dev, tuple[1]//tuple[0]]
+                        tmp.extend(solutions_for_every_seed)
+                        data.append(tmp)
+                        solutions_for_every_seed = []
+
+            # print(data)
+            df= pd.DataFrame(data=data,
+                        columns= list(map(str, headers)))
+            print(df)
+            df.to_excel("../test_data_10_seeds.xlsx")
+
+        elif mode == "sigma_recomb":
+            Ev_recomb = EV_Recomb_sigma()
+            headers = ['n', 'σ', 'λ/μ', 1821, 97, 1940, 1924, 1250, 776, 600, 430, 445, 336]
+            seeds = [1821, 1453, 1940, 1924, 1250, 776, 600, 430, 445, 336]
+            ns = [1, 2, 5, 10, 15]
+            gmax = 200
+            # seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+            l_to_m_ratios = [(50, 50), (50,100), (50,200), (50,300), (50,600), (50,1000)]
+            init_std_devs = [0.01, 0.1, 1, 10, 100]
+            # init_std_devs = [0.1]
+            solutions_for_every_seed = []
+            for n in ns:
+                for index, tuple in enumerate(l_to_m_ratios):
+                    for dev in init_std_devs:
+                        for seed in seeds:
+                            generation_list, sigma_list = Ev_recomb.es(m=tuple[0], l=tuple[1], g_max=gmax, eval_f= self.eval_func, seed=seed, initial_sigma=dev, 
+                            recombination_f=None, strategy="k+l", n=n)
+
+                            generation_eval_list = [[self.eval_func(individual) for individual in generation] for generation in generation_list]
+                            gen_eval_list_np = np.array(generation_eval_list)
+                            # print(generation_eval_list)
+
+                            # list of mins of each generation
+                            gen_mins = np.min(gen_eval_list_np, 1)
+
+                            # best solution
+                            best = np.min(gen_mins)
+                            solutions_for_every_seed.append(best)
+                            print("Best solution: ", best)
+
+                        tmp = [n, dev, tuple[1]//tuple[0]]
+                        tmp.extend(solutions_for_every_seed)
+                        data.append(tmp)
+                        solutions_for_every_seed = []
+            # print(data)
+            df= pd.DataFrame(data=data,
+                        columns= list(map(str, headers)))
+            print(df)
+            df.to_excel("../sigma_recomb_10_seeds.xlsx")
+        
+        elif mode == "one_trial":
+
+            
+            headers = ['n', 'σ', 'μ', 'λ', 1821, 97, 1940, 1924, 1250, 776, 600, 430, 445, 336]
+            seeds = [1821, 1453, 1940, 1924, 1250, 776, 600, 430, 445, 336]
+            # Ev_recomb = Evolutionary_Strategies()
+            Ev_recomb = EV_Recomb_vars()
+            # Ev_recomb = EV_Recomb_sigma()
+
+            m=20
+            l=40
+            g_max=500
+            sigma=1
+            n=15
+            # ns= [1,5,10,50,100]
+            # sigmas= [0.1,1,5,10,25,80,100,150]
+            sigmas= [80]
+            # l_to_m_ratios = [(20, 20), (20,40), (20,80), (20,120), (20,240), (20,400)]
+
+            plt.title('g_max={:}'.format(g_max))
+            plt.axes(xlabel="generations", ylabel="best individual score")
+
+            data = []
+            # for n in ns:
+            
+            # for tuple in l_to_m_ratios:
+            for sigma in sigmas:
+                solutions_for_every_seed = []
+                for seed in seeds:
+                    generation_list, sigma_list = Ev_recomb.es(m=m, l=l, g_max=g_max, eval_f= self.eval_func, seed=seed, initial_sigma=sigma, 
+                    recombination_f=None, strategy="k+l", n=n)
+
+                    generation_eval_list = [[self.eval_func(individual) for individual in generation] for generation in generation_list]
+                    gen_eval_list_np = np.array(generation_eval_list)
+                    # print(generation_eval_list)
+
+                    # list of mins of each generation
+                    gen_mins = np.min(gen_eval_list_np, 1)
+                    plt.plot(range(len(gen_mins)), gen_mins, label=str(seed))
+
+                    # best solution
+                    best = np.min(gen_mins)
+                    print("Best solution: ", best)
+                    solutions_for_every_seed.append(best)
+                    
+                tmp = [n, sigma, m, l]
+                tmp.extend(solutions_for_every_seed)
+                data.append(tmp)
+            df= pd.DataFrame(data=data,
+                        columns= list(map(str, headers)))
+            print(df)
+            df.to_excel("../rec_dec_10_seeds.xlsx")
+            # plt.plot(range(g_max), gen_mins)
+            # plt.hlines(y=best, xmin=0, xmax=g_max, linewidth=2, color='r', label="best: "+str(best))
+            plt.legend()
+            plt.yscale('log')
+            plt.show()
+
+            # print(sigma_list)
+            plt.title('sigma')
+            plt.axes(xlabel="number of adjustments", ylabel="sigma value")
+            plt.plot(range(len(sigma_list)), sigma_list)
+            plt.yscale('log')
+            plt.show()
         
 
 if __name__ == "__main__":
     ACKLEY = ACKLEY(is_debug=False)
     # ACKLEY.solve_ackley()
-    ACKLEY.do_one_trial()
+    ACKLEY.solve_ackley()
